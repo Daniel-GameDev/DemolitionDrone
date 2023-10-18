@@ -71,6 +71,16 @@ void ATurretBase::LostTarget()
 	RotateTurret();
 }
 
+void ATurretBase::Reload()
+{
+	if (ReloadingTimerHandle.IsValid())
+	{
+		ShootNum = 0;
+		bReloading = false;
+		GetWorldTimerManager().ClearTimer(ReloadingTimerHandle);
+	}
+}
+
 void ATurretBase::Shooting()
 {
 	if (bReloading == false && bFireReady == true)
@@ -96,6 +106,13 @@ void ATurretBase::Shooting()
 			{
 				LaunchedProjectile->LaunchProjectile(ShootingVectorWithSpread);
 			}
+		}
+
+		ShootNum++;
+		if (ShootNum == MagazineSize)
+		{
+			bReloading = true;
+			GetWorld()->GetTimerManager().SetTimer(ReloadingTimerHandle, this, &ATurretBase::Reload, ReloadTime, false);
 		}
 	}
 }
@@ -141,9 +158,12 @@ void ATurretBase::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
-	RotationTimeline.TickTimeline(DeltaTime);
-	ShootTimeline.TickTimeline(DeltaTime);
-
-	//if (TurretState == ETurretState::ETS_Searching) return;
-
+	if (TurretState == ETurretState::ETS_Searching)
+	{
+		RotationTimeline.TickTimeline(DeltaTime);
+	}
+	else
+	{
+		ShootTimeline.TickTimeline(DeltaTime);
+	}
 }

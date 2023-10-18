@@ -79,6 +79,9 @@ private:
 	float MaxSpread = 100.f;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Projectile Settings")
+	float ReloadTime = 3.f;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Projectile Settings")
 	uint32 MagazineSize = 10.f;
 
 	UPROPERTY(VisibleAnywhere, Category = "Projectile Settings")
@@ -110,4 +113,5 @@ private:
 
 	void RotateTurret();
 	void LostTarget();
+	void Reload();
 };
