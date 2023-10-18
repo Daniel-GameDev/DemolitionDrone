@@ -150,7 +150,16 @@ public:
 	UFUNCTION(BlueprintCallable, BlueprintPure)
 	FORCEINLINE int32 GetShootNum() { return ShootNum; };
 
+	UFUNCTION()
+	FORCEINLINE void SetShootNum(uint32 Value) { ShootNum += Value; };
+
 	UFUNCTION(BlueprintCallable, BlueprintPure)
 	FORCEINLINE float GetHealth() { return Health; };
+
+	UFUNCTION()
+	FORCEINLINE void SetHealth(float Value) { Health = Value; };
+
+	UFUNCTION()
+	FORCEINLINE void SetEmptyMagazine(bool Value) { bEmptyMagazine = Value; };
 
 };
