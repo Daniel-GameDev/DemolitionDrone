@@ -7,6 +7,7 @@
 #include "ProjectileBase.generated.h"
 
 class UCapsuleComponent;
+class UProjectileMovementComponent;
 
 UCLASS()
 class DEMOLITIONDRONE_API AProjectileBase : public AActor
@@ -31,13 +32,16 @@ private:
 	UPROPERTY(VisibleAnywhere)
 	TObjectPtr<UStaticMeshComponent> ProjectileMesh;
 
+	UPROPERTY(VisibleAnywhere)
+	TObjectPtr<UProjectileMovementComponent> ProjectileMovementComponent;
+
 	UPROPERTY(EditDefaultsOnly)
 	TArray<FName> ApplyDamageTag;
 
 	UPROPERTY(EditDefaultsOnly)
 	float LifeTime = 5.f;
 
-public:
-	void LaunchProjectile(FVector Direction);
+	UPROPERTY(EditDefaultsOnly)
+	float DamageValue = 20.f;
 
 };

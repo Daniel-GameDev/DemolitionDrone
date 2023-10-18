@@ -34,6 +34,10 @@ ATurretBase::ATurretBase()
 	PawnSensingComponent->SetPeripheralVisionAngle(180.f);
 	PawnSensingComponent->SensingInterval = 0.02f;
 	PawnSensingComponent->OnSeePawn.AddDynamic(this, &ATurretBase::OnSeePawn);
+
+	this->Tags.Add(FName("Enemy"));
+
+	Health = DefaultHealth;
 }
 
 void ATurretBase::BeginPlay()
@@ -81,6 +85,21 @@ void ATurretBase::Reload()
 	}
 }
 
+float ATurretBase::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
+{
+	Super::TakeDamage(DamageAmount, DamageEvent, EventInstigator, DamageCauser);
+	Health -= DamageAmount;
+	UE_LOG(LogTemp, Warning, TEXT("Health: %f"), Health);
+
+	if (Health <= 0)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Dead!"));
+		Destroy();
+	}
+
+	return DamageAmount;
+}
+
 void ATurretBase::Shooting()
 {
 	if (bReloading == false && bFireReady == true)
@@ -99,13 +118,7 @@ void ATurretBase::Shooting()
 
 		if (TurretProjectile)
 		{
-			AProjectileBase* LaunchedProjectile = GetWorld()->SpawnActor<AProjectileBase>(TurretProjectile, FireLineArrow->GetComponentTransform());
-			const FVector ShootingVector = FireLineArrow->GetForwardVector() * ProjectileSpeed;
-			const FVector ShootingVectorWithSpread = FVector(ShootingVector.X + FMath::RandRange(MinSpread, MaxSpread), ShootingVector.Y + FMath::RandRange(MinSpread, MaxSpread), ShootingVector.Z + FMath::RandRange(MinSpread, MaxSpread));
-			if (LaunchedProjectile)
-			{
-				LaunchedProjectile->LaunchProjectile(ShootingVectorWithSpread);
-			}
+			GetWorld()->SpawnActor<AProjectileBase>(TurretProjectile, FireLineArrow->GetComponentTransform());
 		}
 
 		ShootNum++;

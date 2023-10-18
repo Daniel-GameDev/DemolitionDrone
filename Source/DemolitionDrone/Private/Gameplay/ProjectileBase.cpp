@@ -3,6 +3,8 @@
 
 #include "Gameplay/ProjectileBase.h"
 #include "Components/CapsuleComponent.h"
+#include "GameFramework/ProjectileMovementComponent.h"
+#include "Engine/DamageEvents.h"
 
 AProjectileBase::AProjectileBase()
 {
@@ -16,7 +18,12 @@ AProjectileBase::AProjectileBase()
 
 	Capsule = CreateDefaultSubobject<UCapsuleComponent>(TEXT("Capsule"));
 	Capsule->SetupAttachment(ProjectileMesh);
+	Capsule->SetGenerateOverlapEvents(true);
 	Capsule->OnComponentBeginOverlap.AddDynamic(this, &AProjectileBase::OnCapsuleBeginOverlap);
+
+	ProjectileMovementComponent = CreateDefaultSubobject<UProjectileMovementComponent>(TEXT("ProjectileMovementComponent"));
+	ProjectileMovementComponent->InitialSpeed = 1000.f;
+	ProjectileMovementComponent->MaxSpeed = 1000.f;
 }
 
 void AProjectileBase::BeginPlay()
@@ -32,14 +39,10 @@ void AProjectileBase::OnCapsuleBeginOverlap(UPrimitiveComponent* OverlappedComp,
 	{
 		if (OtherActor->ActorHasTag(Tag))
 		{
+			OtherActor->TakeDamage(DamageValue, FDamageEvent(), GetInstigatorController(), this);
 			Destroy();
 		}
 	}
-}
-
-void AProjectileBase::LaunchProjectile(FVector Direction)
-{
-	ProjectileMesh->SetPhysicsLinearVelocity(Direction);
 }
 
 void AProjectileBase::Tick(float DeltaTime)

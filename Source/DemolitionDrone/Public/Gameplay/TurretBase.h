@@ -70,15 +70,6 @@ private:
 	TSubclassOf<AProjectileBase> TurretProjectile;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Projectile Settings")
-	float ProjectileSpeed = 1500.f;
-
-	UPROPERTY(EditDefaultsOnly, Category = "Projectile Settings")
-	float MinSpread = 1;
-
-	UPROPERTY(EditDefaultsOnly, Category = "Projectile Settings")
-	float MaxSpread = 100.f;
-
-	UPROPERTY(EditDefaultsOnly, Category = "Projectile Settings")
 	float ReloadTime = 3.f;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Projectile Settings")
@@ -86,6 +77,12 @@ private:
 
 	UPROPERTY(VisibleAnywhere, Category = "Projectile Settings")
 	uint32 ShootNum;
+
+	UPROPERTY(VisibleAnywhere, Category = Health)
+	float Health;
+
+	UPROPERTY(EditDefaultsOnly, Category = Health)
+	float DefaultHealth = 100.f;
 
 	UFUNCTION()
 	void TimelineRotate(float value);
@@ -114,4 +111,11 @@ private:
 	void RotateTurret();
 	void LostTarget();
 	void Reload();
+
+	virtual float TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent, class AController* EventInstigator, AActor* DamageCauser) override;
+
+public:
+	UFUNCTION(BlueprintCallable, BlueprintPure)
+	FORCEINLINE float GetHealth() { return Health; };
+
 };

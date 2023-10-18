@@ -12,6 +12,10 @@
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
 #include "Kismet/KismetMathLibrary.h"
+#include "Blueprint/UserWidget.h"
+#include "Gameplay/ProjectileBase.h"
+#include "Components/ArrowComponent.h"
+#include "Kismet/KismetSystemLibrary.h"
 
 ADrone::ADrone()
 {
@@ -50,6 +54,12 @@ ADrone::ADrone()
 
 	this->bUseControllerRotationYaw = true;
 	this->Tags.Add(FName("Target"));
+
+	FireLineArrow = CreateDefaultSubobject<UArrowComponent>(TEXT("FireArrow"));
+	FireLineArrow->SetupAttachment(GunMesh);
+
+	ShootNum = MagazineSize;
+	Health = DefaultHealth;
 }
 
 void ADrone::BeginPlay()
@@ -61,6 +71,12 @@ void ADrone::BeginPlay()
 		if (UEnhancedInputLocalPlayerSubsystem* Subsystem = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(PlayerController->GetLocalPlayer()))
 		{
 			Subsystem->AddMappingContext(InputMappingContext, 0);
+		}
+
+		if (HUDWidget)
+		{
+			UserWidget = CreateWidget<UUserWidget>(PlayerController, HUDWidget);
+			UserWidget->AddToViewport();
 		}
 	}
 }
@@ -74,6 +90,7 @@ void ADrone::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 		PlayerEnchancedInputComponent->BindAction(LookAction, ETriggerEvent::Triggered, this, &ADrone::Look);
 		PlayerEnchancedInputComponent->BindAction(MoveAction, ETriggerEvent::Triggered, this, &ADrone::Move);
 		PlayerEnchancedInputComponent->BindAction(TakeoffAction, ETriggerEvent::Triggered, this, &ADrone::Takeoff);
+		PlayerEnchancedInputComponent->BindAction(FireAction, ETriggerEvent::Started, this, &ADrone::Fire);
 	}
 }
 
@@ -101,6 +118,63 @@ void ADrone::Takeoff(const FInputActionValue& Value)
 	FloatingPawnMovement->AddInputVector(TakeoffVector);
 }
 
+void ADrone::Fire(const FInputActionValue& Value)
+{
+	if (bEmptyMagazine == false && bFireReady == true)
+	{
+		bFireReady = false;
+
+		if (ShootVectorCurve)
+		{
+			TimelineShootProgress.BindUFunction(this, FName("TimelineShoot"));
+			ShootTimeline.AddInterpVector(ShootVectorCurve, TimelineShootProgress);
+			TimelineOnShootFinish.BindUFunction(this, FName("ShootFinished"));
+			ShootTimeline.SetTimelineFinishedFunc(TimelineOnShootFinish);
+			ShootTimeline.SetLooping(false);
+			ShootTimeline.PlayFromStart();
+		}
+
+		if (DroneProjectile)
+		{
+			FHitResult HitResult;
+			TArray<AActor*> ActorsToIgnore;
+			ActorsToIgnore.Add(this);
+			const FVector CameraForwardLineVector = Camera->GetComponentLocation() + Camera->GetForwardVector() * 5000.f;
+			UKismetSystemLibrary::LineTraceSingle(this, Camera->GetComponentLocation(), CameraForwardLineVector, ETraceTypeQuery::TraceTypeQuery1, false, ActorsToIgnore, EDrawDebugTrace::None, HitResult, true);
+			if (HitResult.bBlockingHit)
+			{
+				FRotator TargetRotation = UKismetMathLibrary::FindLookAtRotation(FireLineArrow->GetComponentTransform().GetLocation(), HitResult.ImpactPoint);
+				GetWorld()->SpawnActor<AProjectileBase>(DroneProjectile, FTransform(TargetRotation, FireLineArrow->GetComponentTransform().GetLocation(), FVector(1.0f)));
+			}
+		}
+
+		ShootNum--;
+		if (GEngine)
+		{
+			GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Yellow, TEXT("Shooting!"));
+		}
+			
+		if (ShootNum == 0)
+		{
+			bEmptyMagazine = true;
+			if (GEngine)
+			{
+				GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Yellow, TEXT("Empty!"));
+			}
+		}
+	}
+}
+
+void ADrone::TimelineShoot(FVector value)
+{
+	GunMesh->SetRelativeLocation(FVector(value.X, GunMesh->GetRelativeLocation().Y, GunMesh->GetRelativeLocation().Z));
+}
+
+void ADrone::ShootFinished()
+{
+	bFireReady = true;
+}
+
 void ADrone::RotatePropellers(float Tick)
 {
 	RightPropeller->SetRelativeRotation(FRotator(RightPropeller->GetRelativeRotation().Pitch, RightPropeller->GetRelativeRotation().Yaw - PropellersSpeed * Tick, RightPropeller->GetRelativeRotation().Roll));
@@ -113,11 +187,30 @@ void ADrone::AltitudeLoss(float tick)
 	FloatingPawnMovement->AddInputVector(AltitudeValue);
 }
 
+float ADrone::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
+{
+	Super::TakeDamage(DamageAmount, DamageEvent, EventInstigator, DamageCauser);
+	Health -= DamageAmount;
+	UE_LOG(LogTemp, Warning, TEXT("Drone Health: %f"), Health);
+
+	if (Health <= 0)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Drone Dead!"));
+		UserWidget->RemoveFromParent();
+		Destroy();
+	}
+
+	return DamageAmount;
+}
+
 void ADrone::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 	
 	RotatePropellers(DeltaTime);
 	AltitudeLoss(DeltaTime);
+	if (bFireReady == false)
+	{
+		ShootTimeline.TickTimeline(DeltaTime);
+	}
 }
-

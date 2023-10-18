@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Pawn.h"
+#include "Components/TimelineComponent.h"
 #include "Drone.generated.h"
 
 class UBoxComponent;
@@ -13,6 +14,8 @@ class UFloatingPawnMovement;
 class UInputMappingContext;
 class UInputAction;
 class InputActionValue;
+class AProjectileBase;
+class UArrowComponent;
 
 UCLASS()
 class DEMOLITIONDRONE_API ADrone : public APawn
@@ -56,6 +59,9 @@ private:
 	UPROPERTY(VisibleAnywhere)
 	TObjectPtr<UFloatingPawnMovement> FloatingPawnMovement;
 
+	UPROPERTY(VisibleAnywhere)
+	TObjectPtr<UArrowComponent> FireLineArrow;
+
 	UPROPERTY(EditDefaultsOnly)
 	float PropellersSpeed = 1500.f;
 
@@ -75,10 +81,43 @@ private:
 	TObjectPtr<UInputAction> TakeoffAction;
 
 	UPROPERTY(EditDefaultsOnly, Category = Input)
+	TObjectPtr<UInputAction> FireAction;
+
+	UPROPERTY(EditDefaultsOnly, Category = Input)
 	float MinCameraPitch = -70.f;
 
 	UPROPERTY(EditDefaultsOnly, Category = Input)
 	float MaxCameraPitch = -10.f;
+
+	UPROPERTY(EditDefaultsOnly, Category = UserWidget)
+	TSubclassOf<UUserWidget> HUDWidget;
+
+	UPROPERTY(EditDefaultsOnly, Category = UserWidget)
+	TObjectPtr<UUserWidget> UserWidget;
+
+	UPROPERTY(EditDefaultsOnly)
+	TSubclassOf<AProjectileBase> DroneProjectile;
+
+	UPROPERTY(EditAnywhere, Category = Fire)
+	TObjectPtr<UCurveVector> ShootVectorCurve;
+
+	UPROPERTY(VisibleAnywhere, Category = Fire)
+	uint32 ShootNum;
+
+	UPROPERTY(EditDefaultsOnly, Category = Fire)
+	bool bEmptyMagazine = false;
+
+	UPROPERTY(EditDefaultsOnly, Category = Fire)
+	bool bFireReady = true;
+
+	UPROPERTY(EditDefaultsOnly, Category = Fire)
+	uint32 MagazineSize = 10.f;
+
+	UPROPERTY(VisibleAnywhere, Category = Health)
+	float Health;
+
+	UPROPERTY(EditDefaultsOnly, Category = Health)
+	float DefaultHealth = 100.f;
 
 	UFUNCTION()
 	void Look(const FInputActionValue& Value);
@@ -89,7 +128,29 @@ private:
 	UFUNCTION()
 	void Takeoff(const FInputActionValue& Value);
 
+	UFUNCTION()
+	void Fire(const FInputActionValue& Value);
+
+	UFUNCTION()
+	void TimelineShoot(FVector value);
+
+	UFUNCTION()
+	void ShootFinished();
+
+	FTimeline ShootTimeline;
+	FOnTimelineVector TimelineShootProgress;
+	FOnTimelineEvent TimelineOnShootFinish;
+
 	void RotatePropellers(float Tick);
 	void AltitudeLoss(float tick);
+
+	virtual float TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent, class AController* EventInstigator, AActor* DamageCauser) override;
+
+public:
+	UFUNCTION(BlueprintCallable, BlueprintPure)
+	FORCEINLINE int32 GetShootNum() { return ShootNum; };
+
+	UFUNCTION(BlueprintCallable, BlueprintPure)
+	FORCEINLINE float GetHealth() { return Health; };
 
 };
